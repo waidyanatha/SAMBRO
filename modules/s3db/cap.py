@@ -42,6 +42,7 @@ __all__ = ("get_cap_options",
            "cap_AreaRepresent",
            "cap_CloneAlert",
            "cap_AlertProfileWidget",
+           "cap_FormOCD",
            #"cap_gis_location_xml_post_parse",
            #"cap_gis_location_xml_post_render",
            )
@@ -648,6 +649,12 @@ $.filterOptionsS3({
         set_method("cap", "alert",
                    method = "clone",
                    action = self.cap_CloneAlert())
+
+        # HTML Print Form
+        # Hard coded method name for organisation
+        set_method("cap", "alert",
+                   method = "form_ocd",  # ocd=office of civil defense
+                   action = self.cap_FormOCD())
 
         if crud_strings["cap_template"]:
             crud_strings[tablename] = crud_strings["cap_template"]
@@ -3293,6 +3300,7 @@ def cap_rheader(r):
             db = current.db
             s3db = current.s3db
             tablename = r.tablename
+            settings = current.deployment_settings
             if tablename == "cap_alert":
                 alert_id = record.id
                 itable = s3db.cap_info
@@ -3343,6 +3351,7 @@ def cap_rheader(r):
                 else:
                     action_btn = None
                     msg_type_buttons = None
+                    html_form_btns = []
                     if not row:
                         error = DIV(T("You need to create at least one alert information item in order to be able to broadcast this alert!"),
                                     _class="error")
@@ -3355,28 +3364,46 @@ def cap_rheader(r):
                         #               )
 
                         has_permission = current.auth.s3_has_permission
-                        # Display 'Submit for Approval', 'Publish Alert' or
-                        # 'Review Alert' based on permission and deployment settings
                         if not current.request.get_vars.get("_next") and \
-                           current.deployment_settings.get_cap_authorisation() and \
+                           settings.get_cap_authorisation() and \
                            record.approved_by is None:
-                            auth = current.auth
-                            # Show these buttons only if there is atleast one area segment
                             area_table = s3db.cap_area
                             area_row = db(area_table.alert_id == alert_id).\
                                                 select(area_table.id,
                                                        limitby=(0, 1)).first()
-                            if area_row and has_permission("update", "cap_alert",
+                            if area_row:
+                                # Show these buttons only if there is atleast one area segment
+                                form_bulletin_name = settings.get_cap_form_bulltin()
+                                if form_bulletin_name:
+                                    # Show the View HTML Form based on language in info segment
+                                    irows = db(itable.alert_id == alert_id).select(\
+                                                                        itable.language)
+                                    for irow in irows:
+                                        language = irow.language
+                                        btn = A(T("%s Form" % (itable.language.represent(language))),
+                                                _href = URL(args = [alert_id,
+                                                                    form_bulletin_name
+                                                                    ],
+                                                            vars = {"lan": language}
+                                                            ),
+                                                _class = "action-btn button tiny",
+                                                _target = "_blank",
+                                                )
+                                        html_form_btns.append(btn)
+
+                                # Display 'Submit for Approval', 'Publish Alert' or
+                                # 'Review Alert' based on permission and deployment settings
+                                if has_permission("update", "cap_alert",
                                                            record_id=alert_id):
-                                action_btn = A(T("Submit for Approval"),
-                                               _href = URL(f = "notify_approver",
-                                                           vars = {"cap_alert.id": alert_id,
-                                                                   },
-                                                           ),
-                                               _class = "action-btn confirm-btn button tiny"
-                                               )
-                                current.response.s3.jquery_ready.append(
-'''S3.confirmClick('.confirm-btn','%s')''' % T("Do you want to submit the alert for approval?"))
+                                    action_btn = A(T("Submit for Approval"),
+                                                   _href = URL(f = "notify_approver",
+                                                               vars = {"cap_alert.id": alert_id,
+                                                                       },
+                                                               ),
+                                                   _class = "action-btn confirm-btn button tiny"
+                                                   )
+                                    current.response.s3.jquery_ready.append(
+    '''S3.confirmClick('.confirm-btn','%s')''' % T("Do you want to submit the alert for approval?"))
 
                                 # For Alert Approver
                                 if has_permission("approve", "cap_alert"):
@@ -3488,12 +3515,16 @@ def cap_rheader(r):
                     if msg_type_buttons is not None:
                         rheader.insert(1, msg_type_buttons)
 
+                    if len(html_form_btns):
+                        for html_form_btn in html_form_btns:
+                            rheader.insert(1, html_form_btn)
+
             elif tablename == "cap_area":
                 # Used only for Area Templates
                 tabs = [(T("Area"), None),
                         ]
 
-                if current.deployment_settings.get_L10n_translate_cap_area():
+                if settings.get_L10n_translate_cap_area():
                     tabs.insert(1, (T("Local Names"), "name"))
 
                 rheader_tabs = s3_rheader_tabs(r, tabs)
@@ -4987,5 +5018,78 @@ class cap_AlertProfileWidget(object):
                          )
 
             return output
+
+# -----------------------------------------------------------------------------
+class cap_FormOCD(S3Method):
+    """ Generate the HTML Form for OCD """
+
+    def apply_method(self, r, **attr):
+        """
+            Apply method.
+            @param r: the S3Request
+            @param attr: controller options for this request
+        """
+
+        if not r.record:
+            # Must be called for a particular alert
+            r.error(404, current.ERROR.BAD_RECORD)
+
+        language = r.vars.get("lan", "en-US")
+        current.response.view = "cap/form_ocd.html"
+        s3db = current.s3db
+        alert_id = r.id
+        table = s3db.cap_alert
+        itable = s3db.cap_info
+        atable = s3db.cap_area
+        ptable = s3db.cap_info_parameter
+        query = (table.id == alert_id) & \
+                (table.deleted != True) & \
+                (itable.alert_id == table.id) & \
+                (itable.deleted != True) & \
+                (itable.language == language) & \
+                (atable.alert_id == table.id) & \
+                (atable.deleted != True) & \
+                (ptable.info_id == itable.id) & \
+                (ptable.deleted != True)
+
+        arows = current.db(query).select(table.status,
+                                         table.source,
+                                         itable.description,
+                                         itable.instruction,
+                                         itable.headline,
+                                         itable.contact,
+                                         ptable.name,
+                                         ptable.value)
+        parameter_table = TABLE(_style="width: 90%; margin:0 auto")
+        if len(arows):
+            settings = current.deployment_settings
+            parameters = {}
+            row_info = arows.first().cap_info
+            row_alert = arows.first().cap_alert
+            for arow in arows:
+                name = arow.cap_info_parameter.name
+                if "sahana:bulletin" in name:
+                    parameter_table_row = TR(TD(B(name.split("sahana:bulletin:", 1)[1]),
+                                                _style="border: 1px solid grey",
+                                                ),
+                                             TD(arow.cap_info_parameter.value,
+                                                _style="border: 1px solid grey",
+                                                ))
+                    parameter_table.append(parameter_table_row)
+    
+            output = dict(instruction=s3_str(row_info.instruction),
+                          description=s3_str(row_info.description),
+                          headline=s3_str(row_info.headline),
+                          status=s3_str(row_alert.status),
+                          time=s3_str(r.utcnow.strftime("%d %B %Y, %I:%M %p")),
+                          source=s3_str(row_alert.source),
+                          parameter_table=parameter_table,
+                          contact=s3_str(row_info.contact),
+                          releasing_officer=settings.get_cap_form_bulltin_officer(),
+                          releasing_officer_designation=settings.get_cap_form_bulltin_officer_designation(),
+                          )
+    
+            return output
+        return "No parameter with sahana:bulletin:"
 
 # END =========================================================================
