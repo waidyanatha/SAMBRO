@@ -3379,7 +3379,7 @@ def cap_rheader(r):
                                                                         itable.language)
                                     for irow in irows:
                                         language = irow.language
-                                        btn = A(T("%s Form" % (itable.language.represent(language))),
+                                        btn = A(T("Bulletin (%s)" % s3_str(language).upper()),
                                                 _href = URL(args = [alert_id,
                                                                     form_bulletin_name
                                                                     ],
