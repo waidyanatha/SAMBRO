@@ -22,7 +22,7 @@ legend button {
 #newsfeed {
     margin-top: 1.7rem;
 }
-.large-6.columns {
+.large-6.columns, .large-8.columns{
     margin-top: 2.5rem;
 }
 .fa-rss {
