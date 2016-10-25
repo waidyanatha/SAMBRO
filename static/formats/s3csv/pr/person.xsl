@@ -240,9 +240,6 @@
             <!-- Contact Information -->
             <xsl:call-template name="ContactInformation"/>
 
-            <!-- Group Information -->
-            <xsl:call-template name="GroupInformation"/>
-
             <!-- Addresses -->
             <xsl:if test="$home!='' or col[@field='Home Postcode']!='' or col[@field='Home L4']!='' or col[@field='Home L3']!='' or col[@field='Home L2']!='' or col[@field='Home L1']!=''">
                 <xsl:call-template name="Address">
@@ -293,19 +290,6 @@
             </xsl:if>
 
         </resource>
-        
-        <!-- Groups -->
-        <xsl:variable name="GroupName" select="col[@field='Group Name']"/>
-        <xsl:if test="$GroupName!=''">
-            <resource name="pr_group">
-                <xsl:attribute name="tuid">
-                    <xsl:value-of select="$GroupName"/>
-                </xsl:attribute>
-                <data field="name">
-                    <xsl:value-of select="$GroupName"/>
-                </data>
-            </resource>
-        </xsl:if>
 
         <!-- Locations -->
         <xsl:if test="$home!='' or col[@field='Home Postcode']!='' or col[@field='Home L4']!='' or col[@field='Home L3']!='' or col[@field='Home L2']!='' or col[@field='Home L1']!=''">
@@ -381,18 +365,6 @@
 
     </xsl:template>
 
-    <xsl:template name="GroupInformation">
-        
-        <xsl:if test="col[@field='Group Name']!=''">
-            <resource name="pr_group_membership">
-                <reference field="group_id" resource="pr_group">
-                    <xsl:attribute name="tuid">
-                        <xsl:value-of select="col[@field='Group Name']/text()"/>
-                    </xsl:attribute>
-                </reference>
-            </resource>
-        </xsl:if>
-    </xsl:template>
     <!-- ****************************************************************** -->
     <xsl:template name="GroupInformation">
         <xsl:variable name="GroupName" select="col[@field='Group Name']/text()"/>
