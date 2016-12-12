@@ -551,7 +551,6 @@ class S3MessageAttachmentModel(S3Model):
                           # FK not instance
                           self.msg_message_id(ondelete="CASCADE"),
                           self.doc_document_id(),
-                          Field("file_path"),
                           *s3_meta_fields())
 
         # ---------------------------------------------------------------------

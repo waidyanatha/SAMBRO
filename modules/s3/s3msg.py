@@ -1974,8 +1974,7 @@ class S3Msg(object):
         s3db = current.s3db
         table = s3db.msg_rss_channel
         query = (table.channel_id == channel_id)
-        channel = db(query).select(table.channel_id,
-                                   table.date,
+        channel = db(query).select(table.date,
                                    table.etag,
                                    table.url,
                                    table.content_type,
