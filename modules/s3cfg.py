@@ -2740,17 +2740,49 @@ class S3Config(Storage):
         """
         return self.cr.get("tags", False)
 
+    def get_cr_shelter_inspection_tasks(self):
+        """
+            Generate tasks from shelter inspections (requires project module)
+        """
+        if self.has_module("project"):
+            return self.cr.get("shelter_inspection_tasks", False)
+        else:
+            return False
+
+    def get_cr_shelter_inspection_task_active_statuses(self):
+        """
+            List of active statuses of shelter inspection tasks
+            (subset of project_task_status_opts)
+        """
+        default = (1, 2, 3, 4, 5, 6, 11)
+        return self.cr.get("shelter_inspection_tasks_active_statuses", default)
+
+    def get_cr_shelter_inspection_task_completed_status(self):
+        """
+            Completed-status for shelter inspection tasks (one value
+            of project_task_status_opts), will be set when inspection
+            flag is marked as resolved
+        """
+        return self.cr.get("shelter_inspection_tasks_completed_status", 12)
+
     # -------------------------------------------------------------------------
     # DC: Data Collection
     #
-    def get_dc_collection_label(self):
+    def get_dc_response_label(self):
         """
-            Label for Data Collections
-            - default: 'Data Collection'
-            - 'Survey'
+            Label for Responses
             - 'Assessment;
+            - 'Response' (default if set to None)
+            - 'Survey'
         """
-        return self.dc.get("collection_label", "Assessment")
+        return self.dc.get("response_label", "Assessment")
+
+    def get_dc_mobile_data(self):
+        """
+            Whether Mobile Clients should download Assessments
+            - e.g. when these are created through Targetting
+        """
+        return self.dc.get("mobile_data", False)
 
     # -------------------------------------------------------------------------
     # Deployments
@@ -2933,6 +2965,15 @@ class S3Config(Storage):
         """
         return self.dvr.get("event_registration_checkin_warning", False)
 
+    def get_dvr_event_registration_show_picture(self):
+        """
+            Event registration UI to show profile picture
+            by default (True), or only on demand (False):
+            - can be set to False (selectively) in order to improve
+              responsiveness of the UI and reduce network traffic
+        """
+        return self.dvr.get("event_registration_show_picture", True)
+
     def get_dvr_activity_use_service_type(self):
         """
             Use service type in case activities
@@ -2950,6 +2991,18 @@ class S3Config(Storage):
             Need types are hierarchical
         """
         return self.dvr.get("needs_hierarchical", False)
+
+    def get_dvr_vulnerability_types_hierarchical(self):
+        """
+            Vulnerability types are hierarchical
+        """
+        return self.dvr.get("vulnerability_types_hierarchical", False)
+
+    def get_dvr_response_types_hierarchical(self):
+        """
+            Response types are hierarchical
+        """
+        return self.dvr.get("response_types_hierarchical", False)
 
     # -------------------------------------------------------------------------
     # Education
@@ -3000,17 +3053,17 @@ class S3Config(Storage):
         """
         return self.event.get("incident_types_hierarchical", False)
 
-    def get_event_collection_tab(self):
+    def get_event_dc_response_tab(self):
         """
-            Whether to show the DC collection tab for events
+            Whether to show the DC response tab for events
         """
-        return self.event.get("collection_tab", True)
+        return self.event.get("dc_response_tab", True)
 
-    def get_event_target_tab(self):
+    def get_event_dc_target_tab(self):
         """
             Whether to show the DC target tab for events
         """
-        return self.event.get("target_tab", True)
+        return self.event.get("dc_target_tab", True)
 
     def get_event_impact_tab(self):
         """
@@ -4487,6 +4540,12 @@ class S3Config(Storage):
             Whether to use hours logging for tasks
         """
         return self.project.get("task_time", True)
+
+    def get_project_my_tasks_include_team_tasks(self):
+        """
+            "My Open Tasks" to include team tasks
+        """
+        return self.project.get("my_tasks_include_team_tasks", False)
 
     # -------------------------------------------------------------------------
     # Requests Management Settings

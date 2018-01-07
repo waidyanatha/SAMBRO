@@ -321,6 +321,15 @@ def config(settings):
 
     settings.fin.currency_default = currency_default
 
+    def currency_represent(currency):
+        """ NS-specific currency represent """
+
+        if currency == "HNL":
+            root_org = current.auth.root_org_name()
+            if root_org == HNRC:
+                return "L"
+        return currency
+
     # -------------------------------------------------------------------------
     # Map Settings
 
@@ -1265,8 +1274,11 @@ def config(settings):
         from gluon import URL
         from s3 import s3_redirect_default
 
-        mode = current.session.s3.hrm.mode
-        if mode is not None:
+        has_role = current.auth.s3_has_role
+        len_roles = len(current.session.s3.roles)
+        if (len_roles <= 2) or \
+           (len_roles == 3 and has_role("RIT_MEMBER") and not has_role("ADMIN")):
+            # No specific Roles
             # Go to Personal Profile
             s3_redirect_default(URL(f="person"))
         else:
@@ -1596,7 +1608,7 @@ Thank you"""
             if callable(standard_postp):
                 output = standard_postp(r, output)
 
-            if r.method in (None, "create"):
+            if r.method in (None, "create") and isinstance(output, dict):
                 form = output.get("form")
                 if form:
                     add_language(form)
@@ -2906,6 +2918,23 @@ Thank you"""
     settings.customise_supply_item_category_resource = customise_supply_item_category_resource
 
     # -------------------------------------------------------------------------
+    def customise_project_organisation_resource(r, tablename):
+
+        root_org = current.auth.root_org_name()
+        if root_org == HNRC:
+            from gluon import IS_IN_SET
+            currency_opts = {"EUR" : "EUR",
+                             "CHF" : "CHF",
+                             "HNL" : "L",
+                             "USD" : "USD",
+                             }
+            f = current.s3db.project_organisation.currency
+            f.represent = currency_represent
+            f.requires = IS_IN_SET(currency_opts)
+
+    settings.customise_project_organisation_resource = customise_project_organisation_resource
+
+    # -------------------------------------------------------------------------
     def project_project_postprocess(form):
         """
             When using Budget Monitoring (i.e. HNRC) then create the entries
@@ -3101,6 +3130,15 @@ Thank you"""
             import random, string
             btable.name.default = "".join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(16))
             btable.monitoring_frequency.default = 3 # Monthly
+            btable.currency.represent = currency_represent
+            currency_opts = {"EUR" : "EUR",
+                             "CHF" : "CHF",
+                             "HNL" : "L",
+                             "USD" : "USD",
+                             }
+            from gluon import IS_IN_SET
+            btable.currency.requires = IS_IN_SET(currency_opts)
+            s3db.budget_monitoring.currency.represent = currency_represent
             postprocess = project_project_postprocess
             list_fields = s3db.get_config("project_project", "list_fields")
             list_fields += [(T("Monthly Status"), "current_status_by_indicators"),

@@ -45,6 +45,7 @@ class S3MainMenu(default.S3MainMenu):
             #homepage("hrm"),
             MM("Staff", c="hrm", f="staff"),
             #homepage("cr"),
+            MM("Distributions", c="supply", f="distribution_item"),
         ]
 
     # -------------------------------------------------------------------------
@@ -140,24 +141,25 @@ class S3OptionsMenu(default.S3OptionsMenu):
                                        due_followups,
                                        )
 
-        ADMIN = current.session.s3.system_roles.ADMIN
+        ADMIN = current.auth.get_system_roles().ADMIN
 
         return M(c=("dvr", "pr"))(
                     M("Current Beneficiaries", c=("dvr", "pr"), f="person",
                       vars = {"closed": "0"})(
                         M("Create", m="create"),
                         M("All Beneficiaries", vars = {}),
+                        M("Beneficiary Report", m="report"),
                         M(follow_up_label, f="due_followups"),
                         ),
                     M("Activities", link=False,
-                      restrict = ("GROUP_ACTIVITIES", "MENTAL_HEALTH"))(
+                      restrict = ("ORG_ADMIN", "GROUP_ACTIVITIES", "MENTAL_HEALTH"))(
                         M("Group Activities", f="activity",
                           vars = {"service_type": "PSS"},
-                          restrict = ("GROUP_ACTIVITIES",),
+                          restrict = ("ORG_ADMIN", "GROUP_ACTIVITIES",),
                           ),
                         M("Mental Health Support", f="activity",
                           vars = {"service_type": "MH"},
-                          restrict = ("MENTAL_HEALTH",),
+                          restrict = ("ORG_ADMIN", "MENTAL_HEALTH",),
                           ),
                         ),
                     M("Archive", link=False)(
@@ -170,18 +172,22 @@ class S3OptionsMenu(default.S3OptionsMenu):
                         ),
                     M("Administration", c="dvr", link=False,
                       restrict = (ADMIN, "ORG_ADMIN"))(
+                        M("Education Levels", c="pr", f="education_level"),
                         M("Beneficiary Types", f="beneficiary_type"),
                         #M("Evaluation Questions", f="evaluation_question"),
                         M("Housing Types", f="housing_type"),
                         M("Income Sources", f="income_source"),
+                        SEP(),
+                        M("Intervention Types", f="response_type"),
                         M("Need Types", f="need", m="hierarchy"),
-                        M("Referral Types", f="referral_type"),
-                        M("Vulnerability Types", f="Vulnerability_type"),
-                        M("Activity Group Types", f="activity_group_type"),
-                        M("Activity Age Groups", f="activity_age_group"),
+                        M("Protection Assessment", f="vulnerability_type", m="hierarchy"),
                         M("Provider Types", f="provider_type"),
-                        M("Activity Focuses", f="activity_focus"),
+                        M("Referral Types", f="referral_type"),
                         M("Termination Types", f="termination_type"),
+                        SEP(),
+                        M("Activity Age Groups", f="activity_age_group"),
+                        M("Activity Group Types", f="activity_group_type"),
+                        M("Activity Focuses", f="activity_focus"),
                         ),
                 )
 
@@ -197,8 +203,7 @@ class S3OptionsMenu(default.S3OptionsMenu):
     def org():
         """ ORG / Organization Registry """
 
-        settings = current.deployment_settings
-        ADMIN = current.session.s3.system_roles.ADMIN
+        ADMIN = current.auth.get_system_roles().ADMIN
 
         return M(c=("org", "project"))(
                     M("Organizations", f="organisation")(
@@ -217,7 +222,7 @@ class S3OptionsMenu(default.S3OptionsMenu):
                     M("Administration", c=("org", "project"), link=False,
                       restrict = (ADMIN, "ORG_ADMIN"))(
                         M("Organization Types", f="organisation_type"),
-                        M("Service Types", f="service"),
+                        M("Service Types", f="service", m="hierarchy"),
                         M("Facility Types", f="facility_type"),
                         M("Projects", c="project", f="project"),
                     ),
@@ -233,9 +238,7 @@ class S3OptionsMenu(default.S3OptionsMenu):
         """ HRM / Human Resources Management """
 
         settings = current.deployment_settings
-
-        session_s3 = current.session.s3
-        ADMIN = session_s3.system_roles.ADMIN
+        ADMIN = current.auth.get_system_roles().ADMIN
 
         return M(c="hrm")(
                     M(settings.get_hrm_staff_label(), f="staff")(
@@ -247,6 +250,25 @@ class S3OptionsMenu(default.S3OptionsMenu):
                     M("Job Title Catalog", f="job_title", restrict=[ADMIN])(
                         M("Create", m="create"),
                       ),
+                    )
+
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def supply():
+        """ SUPPLY / Supply Item Distribution """
+
+        ADMIN = current.auth.get_system_roles().ADMIN
+
+        return M(c="supply")(
+                    M("Distribution Items", f="distribution_item")(
+                        M("Create", m="create"),
+                        ),
+                    M("Administration", link=False,
+                      restrict = (ADMIN, "ORG_ADMIN"))(
+                        M("Items", f="item"),
+                        M("Catalogs", f="catalog"),
+                        M("Item Categories", f="item_category"),
+                        )
                     )
 
 # END =========================================================================
